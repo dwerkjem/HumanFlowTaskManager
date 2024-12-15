@@ -27,24 +27,16 @@ The architecture of the HumanFlow Task Manager follows a layered structure:
 
 ## Key Components
 
+The End user interacts with 3 programs:
+
+1. **Desktop Application**: The main interface for users to interact with the Task Manager. It provides a rich user experience and allows users to create, update, and track tasks.
+2. **Web Application**: A web-based interface that provides access to the Task Manager from any device with a web browser. It allows users to access their tasks and manage them remotely.
+3. **External Services**: Third-party services and APIs that the Task Manager integrates with, such as email services for notifications or cloud storage for data backup.
+
+## Modules
+
 - **Task Management Module**: Handles creation, updating, deletion, and tracking of tasks.
-- **User Management Module**: Manages user authentication, roles, and permissions.
 - **Notification Module**: Sends notifications and alerts to users based on task statuses or deadlines.
+- **Planning Module**: Helps users plan and organize their tasks, providing tools for prioritization and scheduling.
+- **Progress Tracking Module**: Monitors the progress of tasks and projects, providing insights into completion rates and bottlenecks.
 - **Reporting Module**: Generates reports and analytics for performance tracking and monitoring.
-
-## Technology Stack
-
-- **Frontend**: React.js or Angular for building the user interface.
-- **Backend**: Node.js or Python (Django/Flask) for handling business logic.
-- **Database**: PostgreSQL or MongoDB for data storage.
-- **APIs**: REST or GraphQL for communication between the frontend and backend.
-- **CI/CD**: Jenkins, GitHub Actions, or GitLab CI/CD for continuous integration and deployment.
-
-## Future Directions
-
-The system is designed to accommodate future enhancements such as:
-
-- **AI Integration**: Adding AI capabilities for task prioritization and resource allocation.
-- **Mobile Support**: Developing native or hybrid mobile applications.
-- **Advanced Analytics**: Incorporating machine learning models to provide predictive insights.
-
