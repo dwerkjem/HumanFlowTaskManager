@@ -17,7 +17,7 @@ The HumanFlow Task Manager is designed with the following principles in mind:
 
 The architecture of the HumanFlow Task Manager follows a layered structure:
 
-1. **Presentation Layer**: This layer handles the user interface and user experience. It is responsible for displaying information to the user and capturing user input. Technologies like React or Angular can be used here.
+1. **Presentation Layer**: This layer handles the user interface and user experience. It is responsible for displaying information to the user and capturing user input.
 
 2. **Application Layer**: This layer contains the business logic of the application. It acts as a bridge between the presentation layer and the data layer, ensuring that the core functionalities are executed correctly.
 
