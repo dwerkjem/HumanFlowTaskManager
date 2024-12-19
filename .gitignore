@@ -221,8 +221,3 @@ Cargo.lock
 # End of https://www.toptal.com/developers/gitignore/api/c++,python,rust
 
 .vscode
-
-
-# Added by cargo
-
-/target
