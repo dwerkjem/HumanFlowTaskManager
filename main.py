@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from flask import Flask, redirect, url_for, session
 from jose import jwt, JWTError
 from authlib.integrations.flask_client import OAuth
-from dash import Dash, html, dcc
+from dash import Dash, html
 from dash.dependencies import Output, Input
 
 # Load environment variables
