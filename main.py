@@ -1,13 +1,12 @@
 import configparser
 import requests
+import os
+from dotenv import load_dotenv
 from flask import Flask, redirect, url_for, session
 from jose import jwt, JWTError
 from authlib.integrations.flask_client import OAuth
-from dash import Dash, html
+from dash import Dash, html, dcc
 from dash.dependencies import Output, Input
-from dotenv import load_dotenv
-import os
-import modules.authorize
 
 # Load environment variables
 load_dotenv()
@@ -44,12 +43,29 @@ config.read('config.ini')
 authorized_admin_emails = config.get('AUTH', 'authorized_admin_emails').split(',')
 authorized_viewer_emails = config.get('AUTH', 'authorized_viewer_emails').strip('{}').split(',')
 
+# Navbar layout
+navbar = html.Nav(
+    className="navbar",
+    children=[
+        html.Div(
+            className="navbar-container",
+            children=[
+                html.A("Home", href="/", className="navbar-link"),
+                html.A("Login with SSO", href="/login", className="navbar-link"),
+                html.A("Logout", href="/logout", className="navbar-link", style={"marginLeft": "20px"}),
+            ]
+        )
+    ]
+)
+
 # Dash layout
 app.layout = html.Div([
-    html.H1("Dash App with SSO Login"),
+    navbar,
     html.Div(id="user-info"),
-    html.A("Login with SSO", href="/login"),
-    html.A("Logout", href="/logout", style={"marginLeft": "20px"}),
+    html.Div([
+        html.H2("Welcome to the Human Flow Task Manager"),
+        html.P(".")
+    ], style={"marginTop": "20px"})
 ])
 
 # Flask routes for login and logout 
