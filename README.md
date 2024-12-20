@@ -22,5 +22,7 @@ This is a project to track your day-to-day tasks and manage them in a simple way
     - `GOOGLE_CLIENT_ID` - Google Client ID for OAuth
     - `GOOGLE_CLIENT_SECRET` - Google Client Secret for OAuth
     - `FLASK_SECRET_KEY` - Flask secret key for session management and CSRF protection (can be any random string) `head -c 32 /dev/urandom | base64` on Unix systems
-4. Rename config.ini.example to config.ini and fill in the necessary information
-4. Run `python main.py`
+4. Rename example.config.ini to config.ini and fill in the necessary information
+    - `authorized_admin_emails` - Comma separated list of emails that are authorized to add data to the database (e.g. {email@mail.com}, {example@default.com})
+    - `authorized_viewer_emails` - Comma separated list of emails that are authorized to view data in the database (e.g. {email@mail.com}, {example@default.com})
+5. Run `python main.py`
