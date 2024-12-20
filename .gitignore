@@ -222,3 +222,4 @@ Cargo.lock
 
 .vscode
 node_modules
+config.ini
