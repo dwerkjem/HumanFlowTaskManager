@@ -1,27 +1,25 @@
 {
-  "name": "desktop",
+  "name": "human-flow-task-manager-desktop",
   "productName": "desktop",
   "version": "1.0.0",
   "description": "My Electron application description",
-  "main": "src/index.js",
-  "type": "module",
+  "main": "./src/index.js",
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
-    "lint": "eslint ."
+    "publish": "electron-forge publish",
+    "lint": "eslint src"
   },
   "devDependencies": {
-    "@electron-forge/cli": "^6.0.0-beta.68",
-    "@electron-forge/maker-deb": "^6.0.0-beta.68",
-    "@electron-forge/maker-rpm": "^6.0.0-beta.68",
-    "@electron-forge/maker-squirrel": "^6.0.0-beta.68",
-    "@electron-forge/maker-zip": "^6.0.0-beta.68",
-    "@electron-forge/plugin-auto-unpack-natives": "^7.6.0",
-    "@electron-forge/plugin-fuses": "^7.6.0",
-    "@electron/fuses": "^1.8.0",
-    "eslint": "^8.48.0",
-    "electron": "33.2.1"
+    "@electron-forge/cli": "^6.0.0",
+    "@electron-forge/maker-deb": "^6.0.0",
+    "@electron-forge/maker-rpm": "^6.0.0",
+    "@electron-forge/maker-squirrel": "^6.0.0",
+    "@electron-forge/maker-zip": "^6.0.0",
+    "@electron-forge/plugin-fuses": "^6.0.0",
+    "electron": "^25.0.0",
+    "eslint": "^8.0.0"
   },
   "keywords": [],
   "author": {
@@ -31,9 +29,11 @@
   "license": "MIT",
   "dependencies": {
     "electron-squirrel-startup": "^1.0.1",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "electron": "^25.0.0"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "config": {
+    "forge": "./forge.config.cjs"
   }
 }
 

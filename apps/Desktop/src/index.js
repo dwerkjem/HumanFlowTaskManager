@@ -1,10 +1,5 @@
-import { app, BrowserWindow } from 'electron';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import path from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const { app, BrowserWindow } = require('electron');
+const path = require('path');
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -15,7 +10,7 @@ function createWindow() {
     },
   });
 
-  mainWindow.loadFile('index.html');
+  mainWindow.loadFile('src/index.html');
 }
 
 app.whenReady().then(() => {

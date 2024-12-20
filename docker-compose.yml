@@ -9,9 +9,6 @@ services:
     depends_on:
       - api
 
-  desktop:
-    build: ./apps/Desktop
-
   api:
     build: ./apps/Api
     ports:
