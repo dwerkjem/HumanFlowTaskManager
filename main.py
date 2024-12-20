@@ -51,8 +51,7 @@ navbar = html.Nav(
             className="navbar-container",
             children=[
                 html.A("Home", href="/", className="navbar-link"),
-                html.A("Login with SSO", href="/login", className="navbar-link"),
-                html.A("Logout", href="/logout", className="navbar-link", style={"marginLeft": "20px"}),
+                html.A(id="login-logout-link", className="navbar-link", style={"marginLeft": "20px"}),
             ]
         )
     ]
@@ -64,7 +63,6 @@ app.layout = html.Div([
     html.Div(id="user-info"),
     html.Div([
         html.H2("Welcome to the Human Flow Task Manager"),
-        html.P(".")
     ], style={"marginTop": "20px"})
 ])
 
@@ -139,6 +137,18 @@ def logout():
     session.pop("user", None)
     return redirect("/")
 
+# Callback to update the login/logout link in the navbar
+@app.callback(
+    Output("login-logout-link", "children"),
+    Output("login-logout-link", "href"),
+    Input("user-info", "children")
+)
+def update_navbar(_):
+    if session.get("user"):
+        return "Logout", "/logout"
+    else:
+        return "Login with Google", "/login"
+
 # Callback to display user info and authorization level
 @app.callback(
     Output("user-info", "children"),
@@ -161,7 +171,6 @@ def display_user_info(_):
         ])
     else:
         return "You are not logged in."
-
 
 if __name__ == '__main__':
     app.run(debug=True)
