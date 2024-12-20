@@ -1,4 +1,7 @@
+import configparser
+import requests
 from flask import Flask, redirect, url_for, session
+from jose import jwt, JWTError
 from authlib.integrations.flask_client import OAuth
 from dash import Dash, html
 from dash.dependencies import Output, Input
@@ -11,7 +14,7 @@ load_dotenv()
 
 # Flask server setup
 server = Flask(__name__)
-server.secret_key = os.getenv("FLASK_SECRET_KEY")
+server.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(24))
 
 # Secure session cookies
 server.config.update(
@@ -35,6 +38,12 @@ oauth.register(
 # Dash app setup
 app = Dash(__name__, server=server, suppress_callback_exceptions=True)
 
+# Read authorized emails from config.ini
+config = configparser.ConfigParser()
+config.read('config.ini')
+authorized_admin_emails = config.get('AUTH', 'authorized_admin_emails').split(',')
+authorized_viewer_emails = config.get('AUTH', 'authorized_viewer_emails').strip('{}').split(',')
+
 # Dash layout
 app.layout = html.Div([
     html.H1("Dash App with SSO Login"),
@@ -51,13 +60,70 @@ def login():
 
 @server.route("/authorize")
 def authorize():
-    return modules.authorize.authorize(oauth)
+    token_response = oauth.google.authorize_access_token()
+    id_token = token_response.get('id_token')
+    if not id_token:
+        return "ID token not found in the response.", 400
+
+    try:
+        # Fetch Google's public keys
+        jwks_url = "https://www.googleapis.com/oauth2/v3/certs"
+        jwks = requests.get(jwks_url).json()
+
+        # Get key ID from token header
+        header = jwt.get_unverified_header(id_token)
+        kid = header['kid']
+
+        # Find the matching public key
+        key = None
+        for jwk in jwks['keys']:
+            if jwk['kid'] == kid:
+                key = jwk
+                break
+
+        if not key:
+            return "Matching public key not found", 400
+
+        # Construct the public key
+        from jose import jwk
+        from jose.utils import base64url_decode
+
+        public_key = jwk.construct(key)
+        message, encoded_signature = id_token.rsplit('.', 1)
+        decoded_signature = base64url_decode(encoded_signature.encode('utf-8'))
+
+        # Verify the signature
+        if not public_key.verify(message.encode("utf-8"), decoded_signature):
+            return "Signature verification failed.", 400
+
+        # Decode and verify the ID token
+        decoded_token = jwt.decode(
+            id_token,
+            key,
+            algorithms=["RS256"],
+            audience=os.getenv("GOOGLE_CLIENT_ID"),
+            issuer="https://accounts.google.com",
+            options={"verify_at_hash": False}  # Disable at_hash verification
+        )
+
+        # Store user information
+        session["user"] = {
+            "name": decoded_token.get("name"),
+            "email": decoded_token.get("email"),
+            "picture": decoded_token.get("picture"),
+        }
+
+        return redirect("/")
+
+    except (JWTError, StopIteration) as e:
+        return f"Token verification failed: {str(e)}", 400
+
 @server.route("/logout")
 def logout():
     session.pop("user", None)
     return redirect("/")
 
-# Callback to display user info
+# Callback to display user info and authorization level
 @app.callback(
     Output("user-info", "children"),
     Input("user-info", "id")
@@ -65,12 +131,21 @@ def logout():
 def display_user_info(_):
     user = session.get("user")
     if user:
+        email = user.get("email")
+        if email in authorized_admin_emails:
+            role = "Admin"
+        elif email in authorized_viewer_emails:
+            role = "Viewer"
+        else:
+            role = "Unauthorized"
+
         return html.Div([
             html.Img(src=user.get("picture"), style={"height": "50px"}),
-            html.Span(f"Welcome {user['name']} ({user['email']})!", style={"marginLeft": "10px"})
+            html.Span(f"Welcome {user['name']} ({user['email']})! Role: {role}", style={"marginLeft": "10px"})
         ])
     else:
         return "You are not logged in."
+
 
 if __name__ == '__main__':
     app.run(debug=True)
