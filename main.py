@@ -1,6 +1,6 @@
 from flask import Flask, redirect, url_for, session, jsonify, request
 from authlib.integrations.flask_client import OAuth
-from dash import Dash, html, dcc
+from dash import Dash, html
 from dash.dependencies import Output, Input
 import os
 from dotenv import load_dotenv
