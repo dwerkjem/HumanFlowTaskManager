@@ -1,12 +1,18 @@
 from flask import Flask, redirect, url_for, session, jsonify, request
 from authlib.integrations.flask_client import OAuth
-from dash import Dash, html
+from dash import Dash, html, dcc
+from pathlib import Path
 from dash.dependencies import Output, Input
-import os
 from dotenv import load_dotenv
+import os
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from .env file
+env_path = Path(".") / ".env"
+load_dotenv(dotenv_path=env_path)
+
+# Print loaded environment variables for debugging
+print("USER_HOST from env:", os.getenv("USER_HOST"))
+print("USER_PORT from env:", os.getenv("USER_PORT"))
 
 # Flask server setup
 server = Flask(__name__)
@@ -66,7 +72,7 @@ def login():
     redirect_uri = url_for("authorize", _external=True)
     nonce = os.urandom(24).hex()
     session["auth0_nonce"] = nonce
-    return auth0.authorize_redirect(redirect_uri="http://localhost:8050/authorize", nonce=nonce)
+    return auth0.authorize_redirect(redirect_uri=redirect_uri, nonce=nonce)
 
 @server.route("/authorize")
 def authorize():
@@ -111,4 +117,7 @@ def display_user_info(_):
         return "You are not logged in."
 
 if __name__ == "__main__":
-    app.run(debug=True, host="localhost", port=8050)
+    requested_address = str(os.getenv("USER_HOST", "127.0.0.1"))
+    requested_port = str(os.getenv("USER_PORT", 8050))
+    print(f"Starting server at {requested_address}:{requested_port}")
+    app.run(debug=True, host=requested_address, port=requested_port)
