@@ -25,7 +25,7 @@ This is a project to track your day-to-day tasks and manage them in a simple way
     - `FLASK_SECRET` - Flask secret key (e.g. `head -c 24 /dev/urandom | xxd -p`)
     - `HOST` - Host (e.g. localhost or www.example.com)
     - `PORT` - Port (e.g. 3052)
-4. Rename `example.config.ini` to `config.ini` and fill in the necessary information
+4. Rename `config/example.config.ini` to `config/config.ini` and fill in the necessary information
     - `authorized_admin_emails` - Comma separated list of emails that are authorized to add data to the database (e.g. {email@mail.com}, {example@default.com})
     - `authorized_viewer_emails` - Comma separated list of emails that are authorized to view data in the database (e.g. {email@mail.com}, {example@default.com})
 5. Run `python main.py`
