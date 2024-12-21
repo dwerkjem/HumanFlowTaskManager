@@ -24,6 +24,7 @@ server.secret_key = os.getenv("FLASK_SECRET_KEY")
 # Configure server-side session management
 server.config["SESSION_TYPE"] = "filesystem"
 
+
 # Secure session cookies
 server.config.update(
     SESSION_COOKIE_SECURE=True,
@@ -120,6 +121,6 @@ def display_user_info(_):
         return "You are not logged in."
 
 if __name__ == "__main__":
-    requested_address = str(os.getenv("USER_HOST", "127.0.0.1"))
-    requested_port = str(os.getenv("USER_PORT", 8050))
+    requested_address = os.getenv("USER_HOST", "0.0.0.0")
+    requested_port = int(os.getenv("APP_PORT_HOST", 8050))
     app.run(debug=True, host=requested_address, port=requested_port)
