@@ -10,9 +10,6 @@ import os
 env_path = Path(".") / ".env"
 load_dotenv(dotenv_path=env_path)
 
-# Print loaded environment variables for debugging
-print("USER_HOST from env:", os.getenv("USER_HOST"))
-print("USER_PORT from env:", os.getenv("USER_PORT"))
 
 # Flask server setup
 server = Flask(__name__)
@@ -119,5 +116,4 @@ def display_user_info(_):
 if __name__ == "__main__":
     requested_address = str(os.getenv("USER_HOST", "127.0.0.1"))
     requested_port = str(os.getenv("USER_PORT", 8050))
-    print(f"Starting server at {requested_address}:{requested_port}")
     app.run(debug=True, host=requested_address, port=requested_port)
