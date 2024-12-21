@@ -1,14 +1,20 @@
+import os
+
 from flask import Flask, redirect, url_for, session, jsonify, request
 from authlib.integrations.flask_client import OAuth
 from dash import Dash, html, dcc
 from pathlib import Path
 from dash.dependencies import Output, Input
 from dotenv import load_dotenv
-import os
+
+import modules.logger as logging
 
 # Load environment variables from .env file
 env_path = Path(".") / ".env"
 load_dotenv(dotenv_path=env_path)
+
+# Create logger
+logger = logging.create_logger()
 
 
 # Flask server setup

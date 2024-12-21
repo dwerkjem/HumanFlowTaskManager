@@ -4,27 +4,29 @@ services:
   loki:
     image: grafana/loki:2.7.1
     ports:
-      - "3100:3100"
+      - "${LOKI_PORT_HOST}:${LOKI_PORT_HOST}"
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - ./config/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki-wal:/wal
+    user: "0"
 
   grafana:
     image: grafana/grafana:9.5.0
     ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - "${GRAFANA_PORT_HOST}:${GRAFANA_PORT_HOST}"
+    env_file: .env
     volumes:
       - grafana-data:/var/lib/grafana
 
-  fluent-bit:
-    image: fluent/fluent-bit:1.9
-    volumes:
-      - ./config/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
-      - /var/log:/var/log
-    depends_on:
-      - loki
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${APP_PORT_HOST}:${APP_PORT_HOST}"
+    env_file: .env
 
 volumes:
   grafana-data:
+  loki-wal:
