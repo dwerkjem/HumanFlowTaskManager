@@ -1,7 +1,6 @@
 import os
 import json
 import redis
-
 from dash import Dash, html, dcc, Output, Input
 from flask import Flask, session, redirect, url_for, request
 from flask_limiter import Limiter
@@ -11,9 +10,15 @@ from modules.custom_logger import create_logger
 
 logger = create_logger()
 
-# Load user credentials from JSON file
-with open('credentials.json') as f:
-    raw_credentials = json.load(f)
+def load_credentials():
+    try:
+        with open('credentials.json') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading credentials: {e}")
+        return {}
+
+raw_credentials = load_credentials()
 
 # Extract usernames and passwords for BasicAuth
 USER_PWD = {user_info['username']: user_info['password'] for user_info in raw_credentials.values()}
@@ -28,7 +33,6 @@ app = Dash(__name__,
            suppress_callback_exceptions=True, 
            use_pages=True,
            pages_folder="")  # Update path to absolute
-
 
 # Initialize Redis client with Docker service name
 redis_host = os.getenv('REDIS_HOST', 'redis')
@@ -77,8 +81,9 @@ def login():
             logger.info(f"User '{username}' logged in successfully.")
             return redirect(url_for('index'))
         else:
-            logger.warning(f"Invalid login attempt for username '{username}'.")
+            logger.warning("Invalid credentials.")
             return "Invalid credentials", 401
+    
     return '''
         <form method="post">
             Username: <input type="text" name="username"><br>

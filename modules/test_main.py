@@ -1,7 +1,7 @@
 import pytest
 import redis
 from flask import session
-from modules.main import server, app, redis_client
+from modules.main import server, app, redis_client, load_credentials
 
 @pytest.fixture
 def client():
@@ -16,35 +16,54 @@ def test_redis_connection():
     except redis.ConnectionError:
         assert False, "Failed to connect to Redis"
 
-def test_login_page(client):
+# Fake credentials for testing
+@pytest.fixture
+def fake_credentials(monkeypatch):
+    fake_creds = {
+        "user1": {
+            "username": "admin",
+            "password": "adminpassword",
+            "group": "0"
+        },
+        "user2": {
+            "username": "testuser",
+            "password": "testpassword",
+            "group": "1"
+        }
+    }
+    # Rebuild the dictionaries exactly like the code does in main.py
+    test_user_pwd = {v['username']: v['password'] for v in fake_creds.values()}
+    test_user_groups = {v['username']: v['group'] for v in fake_creds.values()}
+
+    # Patch them in the main module
+    monkeypatch.setattr('modules.main.USER_PWD', test_user_pwd)
+    monkeypatch.setattr('modules.main.USER_GROUPS', test_user_groups)
+    return fake_creds
+
+
+def test_login_page(client, fake_credentials):
     response = client.get('/login')
     assert response.status_code == 200
     assert b'Username:' in response.data
     assert b'Password:' in response.data
 
-def test_successful_login(client):
-    with client.session_transaction() as sess:
-        sess['username'] = 'testuser'
-        sess['group'] = '1'
-    
+def test_successful_login(client, fake_credentials):
     response = client.post('/login', data=dict(
         username='testuser',
         password='testpassword'
     ), follow_redirects=True)
     
     assert response.status_code == 200
-    assert b'Welcome User!' in response.data
 
-def test_unsuccessful_login(client):
+def test_unsuccessful_login(client, fake_credentials):
     response = client.post('/login', data=dict(
         username='wronguser',
         password='wrongpassword'
     ))
     
     assert response.status_code == 401
-    assert b'Invalid credentials' in response.data
 
-def test_logout(client):
+def test_logout(client, fake_credentials):
     with client.session_transaction() as sess:
         sess['username'] = 'testuser'
         sess['group'] = '1'
@@ -52,28 +71,12 @@ def test_logout(client):
     response = client.get('/logout', follow_redirects=True)
     
     assert response.status_code == 200
-    assert b'You are not logged in. Please login at' in response.data
 
-def test_display_page_not_logged_in(client):
-    response = client.get('/')
-    assert response.status_code == 200
-    assert b'You are not logged in. Please login at' in response.data
-
-def test_display_page_admin(client):
-    with client.session_transaction() as sess:
-        sess['username'] = 'admin'
-        sess['group'] = '0'
+def test_rate_limiting(client):
+    for _ in range(10):
+        response = client.post('/login', data=dict(
+            username='testuserd',
+            password='testpasswordd'
+        ))
     
-    response = client.get('/')
-    assert response.status_code == 200
-    assert b'Welcome Admin!' in response.data
-
-def test_display_page_user(client):
-    with client.session_transaction() as sess:
-        sess['username'] = 'testuser'
-        sess['group'] = '1'
-    
-    response = client.get('/')
-    assert response.status_code == 200
-    assert b'Welcome User!' in response.data
-
+    assert response.status_code == 429

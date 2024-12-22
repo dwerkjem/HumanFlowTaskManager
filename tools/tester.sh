@@ -8,7 +8,5 @@ docker-compose down
 
 # Build the docker images and run pytest
 
-docker-compose up --remove-orphans --build -d && docker-compose exec web pytest
+docker-compose up --remove-orphans --build -d && docker-compose exec app pytest
 
-# echo any error messages
-echo "Error messages:" && docker-compose logs | grep -i error && echo "End of error messages"
