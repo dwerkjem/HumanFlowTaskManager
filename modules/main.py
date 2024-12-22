@@ -3,7 +3,6 @@ import json
 import redis
 
 from dash import Dash, html, dcc, Output, Input
-from dash_auth import BasicAuth
 from flask import Flask, session, redirect, url_for, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -30,12 +29,18 @@ app = Dash(__name__,
            use_pages=True,
            pages_folder="")  # Update path to absolute
 
-BasicAuth(app, USER_PWD)
 
 # Initialize Redis client with Docker service name
 redis_host = os.getenv('REDIS_HOST', 'redis')
 redis_port = int(os.getenv('REDIS_PORT', 6379))
 redis_client = redis.Redis(host=redis_host, port=redis_port, db=0)
+
+# Verify Redis connection
+try:
+    redis_client.ping()
+    logger.info("Successfully connected to Redis.")
+except redis.ConnectionError as e:
+    logger.error(f"Failed to connect to Redis: {e}")
 
 # Custom key function for rate limiting
 def custom_key_func():
