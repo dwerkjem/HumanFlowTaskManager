@@ -28,19 +28,8 @@ services:
     ports:
       - "${APP_PORT_HOST}:${APP_PORT_CONTAINER}"  
     env_file: .env
-    environment:
-      - SESSION_TYPE=redis
-    depends_on:
-      - redis
-    restart: unless-stopped
-
-  redis:
-    image: redis:6.2.5
-    volumes:
-      - redis-data:/data
     restart: unless-stopped
 
 volumes:
   grafana-data:
   loki-wal:
-  redis-data:  # Added missing volume declaration
