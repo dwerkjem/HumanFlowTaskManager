@@ -5,6 +5,7 @@ from dash import Dash, html, dcc, Output, Input
 from flask import Flask, session, redirect, url_for, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import random
 
 from modules.custom_logger import create_logger
 
@@ -27,12 +28,12 @@ USER_PWD = {user_info['username']: user_info['password'] for user_info in raw_cr
 USER_GROUPS = {user_info['username']: user_info['group'] for user_info in raw_credentials.values()}
 
 server = Flask(__name__)
-server.secret_key = os.getenv("SECRET_KEY", "supersecretkey")
+server.secret_key = os.getenv("SECRET_KEY", random.randint(0, 1000000000))
 app = Dash(__name__, 
            server=server, 
            suppress_callback_exceptions=True, 
            use_pages=True,
-           pages_folder="")  # Update path to absolute
+           pages_folder="pages")  # Update path to absolute
 
 # Initialize Redis client with Docker service name
 redis_host = os.getenv('REDIS_HOST', 'redis')
