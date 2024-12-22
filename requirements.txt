@@ -1,3 +1,5 @@
 dash==2.18.2
 python-dotenv==1.0.1
 python-logging-loki==0.3.1
+dash-auth==2.3.0
+Flask-Limiter==3.9.2
