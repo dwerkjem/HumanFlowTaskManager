@@ -1,7 +1,7 @@
 import pytest
 import redis
 from flask import session
-from modules.main import server, app, redis_client, load_credentials
+from modules.main import server, redis_client
 
 @pytest.fixture
 def client():
