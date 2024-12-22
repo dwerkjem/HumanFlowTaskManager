@@ -6,8 +6,12 @@ from flask import Flask, session, redirect, url_for, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import random
+import sys
 
-from modules.custom_logger import create_logger
+if __name__ != "__main__":
+    from modules.custom_logger import create_logger
+else:
+    from custom_logger import create_logger
 
 logger = create_logger()
 
@@ -100,15 +104,18 @@ def logout():
     logger.info(f"User '{username}' logged out.")
     return redirect(url_for('index'))
 
+def clear_rate_limit(user_ip):
+    keys = redis_client.keys(f"LIMITER/{user_ip}/*")
+    for key in keys:
+        redis_client.delete(key)
+    logger.info(f"Rate limits for {user_ip} cleared.")
+
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     html.Div(id='page-content')
 ])
 
-@app.server.route('/')
-def index():
-    home_page = app.get_page('home')
-    return home_page.layout
+# Example callback to demonstrate group-based access control
 @app.callback(
     Output('page-content', 'children'),
     Input('url', 'pathname')
@@ -139,4 +146,11 @@ def display_page(pathname):
         ])
 
 if __name__ == "__main__":
-    app.run_server(debug=False)
+    if len(sys.argv) > 1 and sys.argv[1] == 'clear_rate_limit':
+        if len(sys.argv) != 3:
+            print("Usage: python main.py clear_rate_limit <user_ip>")
+        else:
+            user_ip = sys.argv[2]
+            clear_rate_limit(user_ip)
+    else:
+        app.run_server(debug=False)
