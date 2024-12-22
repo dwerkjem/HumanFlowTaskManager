@@ -100,16 +100,15 @@ def logout():
     logger.info(f"User '{username}' logged out.")
     return redirect(url_for('index'))
 
-@app.server.route('/')
-def index():
-    return app.index()
-
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     html.Div(id='page-content')
 ])
 
-# Example callback to demonstrate group-based access control
+@app.server.route('/')
+def index():
+    home_page = app.get_page('home')
+    return home_page.layout
 @app.callback(
     Output('page-content', 'children'),
     Input('url', 'pathname')
