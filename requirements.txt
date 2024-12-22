@@ -5,3 +5,4 @@ dash-auth==2.3.0
 Flask-Limiter==3.9.2
 gunicorn==23.0.0
 redis==5.2.1
+pytest==8.3.4
