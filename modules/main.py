@@ -9,7 +9,6 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 from modules.custom_logger import create_logger
-from modules.human_hash import generate_human_readable_hash as human_hash
 
 logger = create_logger()
 
@@ -25,18 +24,32 @@ USER_GROUPS = {user_info['username']: user_info['group'] for user_info in raw_cr
 
 server = Flask(__name__)
 server.secret_key = os.getenv("SECRET_KEY", "supersecretkey")
-app = Dash(__name__, server=server, suppress_callback_exceptions=True)
+app = Dash(__name__, 
+           server=server, 
+           suppress_callback_exceptions=True, 
+           use_pages=True,
+           pages_folder="")  # Update path to absolute
 
 BasicAuth(app, USER_PWD)
 
-# Initialize Redis client
-redis_client = redis.Redis(host='localhost', port=6379, db=0)
+# Initialize Redis client with Docker service name
+redis_host = os.getenv('REDIS_HOST', 'redis')
+redis_port = int(os.getenv('REDIS_PORT', 6379))
+redis_client = redis.Redis(host=redis_host, port=redis_port, db=0)
 
-# Initialize Flask-Limiter with Redis storage
+# Custom key function for rate limiting
+def custom_key_func():
+    remote_addr = get_remote_address()
+    # Assuming the internal network IP range is 192.168.0.0/16
+    if remote_addr.startswith('192.168.'):
+        return None  # No rate limiting for internal network
+    return remote_addr
+
+# Initialize Flask-Limiter with Redis storage and custom key function
 limiter = Limiter(
-    get_remote_address,
+    key_func=custom_key_func,
     app=server,
-    storage_uri="redis://localhost:6379",
+    storage_uri=f"redis://{redis_host}:{redis_port}",
     default_limits=["200 per day", "50 per hour"]
 )
 
@@ -48,7 +61,7 @@ def before_request():
         logger.debug(f"User '{session['username']}' logged in with group '{session['group']}'.")
 
 @app.server.route('/login', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("10 per minute", key_func=custom_key_func)
 def login():
     if request.method == 'POST':
         username = request.form['username']
@@ -100,11 +113,20 @@ def display_page(pathname):
     
     group = session.get('group')
     if group == '0':
-        return html.Div("Welcome Admin!")
+        return html.Div([
+            html.P("Welcome Admin!"),
+            html.A("Logout", href="/logout")
+        ])
+
     elif group == '1':
-        return html.Div("Welcome User!")
+        return html.Div([
+            html.P("Welcome User!"),
+            html.A("Logout", href="/logout")
+        ])
     else:
-        return html.Div("Unauthorized access.")
+        return html.Div([
+            html.P("Invalid group. Please contact the administrator."),
+        ])
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=False)

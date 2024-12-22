@@ -11,6 +11,8 @@ services:
       - loki-wal:/wal
     user: "0"
     restart: unless-stopped
+    networks:
+      - app-network
 
   grafana:
     image: grafana/grafana:9.5.0
@@ -20,16 +22,41 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
     restart: unless-stopped
+    depends_on:
+      - loki
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7.2
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - app-network
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
     ports:
-      - "${APP_PORT_HOST}:${APP_PORT_CONTAINER}"  
+      - "8000:8000"
     env_file: .env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     restart: unless-stopped
+    depends_on:
+      - redis
+      - loki
+    networks:
+      - app-network
 
 volumes:
   grafana-data:
   loki-wal:
+  redis-data:
+
+networks:
+  app-network:
+    driver: bridge
