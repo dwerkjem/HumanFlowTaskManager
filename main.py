@@ -6,6 +6,8 @@ from dash import Dash, html, dcc
 from pathlib import Path
 from dash.dependencies import Output, Input
 from dotenv import load_dotenv
+from flask_session import Session
+import redis
 
 import modules.logger as logging
 
@@ -22,12 +24,15 @@ server = Flask(__name__)
 server.secret_key = os.getenv("FLASK_SECRET_KEY")
 
 # Configure server-side session management
-server.config["SESSION_TYPE"] = "filesystem"
-
+server.config["SESSION_TYPE"] = "redis"
+server.config["SESSION_PERMANENT"] = False
+server.config["SESSION_USE_SIGNER"] = True
+server.config["SESSION_REDIS"] = redis.Redis(host="redis", port=os.getenv("REDIS_PORT_CONTAINER", 6379), db=0)
+Session(server)
 
 # Secure session cookies
 server.config.update(
-    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_SECURE=False,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax'
 )
@@ -122,5 +127,5 @@ def display_user_info(_):
 
 if __name__ == "__main__":
     requested_address = os.getenv("USER_HOST", "0.0.0.0")
-    requested_port = int(os.getenv("APP_PORT_HOST", 8050))
+    requested_port = int(os.getenv("APP_PORT_CONTAINER", 8050))
     app.run(debug=True, host=requested_address, port=requested_port)

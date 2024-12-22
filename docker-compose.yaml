@@ -4,29 +4,43 @@ services:
   loki:
     image: grafana/loki:2.7.1
     ports:
-      - "${LOKI_PORT_HOST}:${LOKI_PORT_HOST}"
+      - "${LOKI_PORT_HOST}:${LOKI_PORT_CONTAINER}" 
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - ./config/loki-config.yaml:/etc/loki/local-config.yaml
       - loki-wal:/wal
     user: "0"
+    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:9.5.0
     ports:
-      - "${GRAFANA_PORT_HOST}:${GRAFANA_PORT_HOST}"
+      - "${GRAFANA_PORT_HOST}:${GRAFANA_PORT_CONTAINER}" 
     env_file: .env
     volumes:
       - grafana-data:/var/lib/grafana
+    restart: unless-stopped
 
   app:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "${APP_PORT_HOST}:${APP_PORT_HOST}"
+      - "${APP_PORT_HOST}:${APP_PORT_CONTAINER}"  
     env_file: .env
+    environment:
+      - SESSION_TYPE=redis
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:6.2.5
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
 
 volumes:
   grafana-data:
   loki-wal:
+  redis-data:  # Added missing volume declaration
