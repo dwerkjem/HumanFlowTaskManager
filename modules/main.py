@@ -110,11 +110,21 @@ def logout():
         return "Internal Server Error", 500
     return redirect(url_for('login'))
 
+@app.server.route('/')
+def index():
+    return redirect(url_for('login'))
+
 def clear_rate_limit(user_ip):
     keys = redis_client.keys(f"LIMITER/{user_ip}/*")
     for key in keys:
         redis_client.delete(key)
     logger.info(f"Rate limits for {user_ip} cleared.")
+
+app.layout = html.Div([
+    create_nav_bar(),  # Add the navigation bar to the layout
+    dcc.Location(id='url', refresh=False),
+    html.Div(id='page-content')
+])
 
 # Example callback to demonstrate group-based access control
 @app.callback(
@@ -130,11 +140,17 @@ def display_page(pathname):
         ])
     
     group = session.get('group')
-    if group == '0':
-        return create_nav_bar("Admin", session['username'])
-
-    elif group == '1':
-        return create_nav_bar("Viewer", session['username'])
+    if pathname == '/':
+        if group == '0':
+            return html.Div([
+                html.P("Welcome Admin!"),
+                html.A("Logout", href="/logout")
+            ])
+        elif group == '1':
+            return html.Div([
+                html.P("Welcome User!"),
+                html.A("Logout", href="/logout")
+            ])
     else:
         return html.Div([
             html.P("Invalid group. Please contact the administrator."),
