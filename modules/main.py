@@ -8,6 +8,8 @@ from flask_limiter.util import get_remote_address
 import random
 import sys
 
+from modules.pages.nav_bar import create_nav_bar
+
 if __name__ != "__main__":
     from modules.custom_logger import create_logger
 else:
@@ -99,21 +101,20 @@ def login():
 
 @app.server.route('/logout')
 def logout():
-    username = session.pop('username', None)
-    session.pop('group', None)
-    logger.info(f"User '{username}' logged out.")
-    return redirect(url_for('index'))
+    try:
+        username = session.pop('username', None)
+        session.pop('group', None)
+        logger.info(f"User '{username}' logged out.")
+    except Exception as e:
+        logger.error(f"Error during logout: {e}")
+        return "Internal Server Error", 500
+    return redirect(url_for('login'))
 
 def clear_rate_limit(user_ip):
     keys = redis_client.keys(f"LIMITER/{user_ip}/*")
     for key in keys:
         redis_client.delete(key)
     logger.info(f"Rate limits for {user_ip} cleared.")
-
-app.layout = html.Div([
-    dcc.Location(id='url', refresh=False),
-    html.Div(id='page-content')
-])
 
 # Example callback to demonstrate group-based access control
 @app.callback(
@@ -130,16 +131,10 @@ def display_page(pathname):
     
     group = session.get('group')
     if group == '0':
-        return html.Div([
-            html.P("Welcome Admin!"),
-            html.A("Logout", href="/logout")
-        ])
+        return create_nav_bar("Admin", session['username'])
 
     elif group == '1':
-        return html.Div([
-            html.P("Welcome User!"),
-            html.A("Logout", href="/logout")
-        ])
+        return create_nav_bar("Viewer", session['username'])
     else:
         return html.Div([
             html.P("Invalid group. Please contact the administrator."),
