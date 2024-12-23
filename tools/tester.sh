@@ -8,4 +8,4 @@ docker-compose down
 
 # Build the docker images and run pytest
 
-docker-compose up --remove-orphans --build -d && docker-compose exec app pytest
+docker-compose up --remove-orphans --prune --build && docker-compose exec app pytest

@@ -39,7 +39,7 @@ app = Dash(__name__,
            server=server, 
            suppress_callback_exceptions=True, 
            use_pages=True,
-           pages_folder="pages")  # Update path to absolute
+           pages_folder='pages')
 
 # Initialize Redis client with Docker service name
 redis_host = os.getenv('REDIS_HOST', 'redis')
