@@ -10,5 +10,5 @@ docker-compose down
 # find user's ip address
 
 # Run the Python script to clear rate limit
-docker-compose up --remove-orphans --build "$1"
+docker-compose up --remove-orphans --build 
 
