@@ -27,6 +27,8 @@ This is a project to track your day-to-day tasks and manage them in a simple way
     - `GRAFANA_PORT_CONTAINER` is the port number Grafana will run on in the container
     - `LOKI_PORT_HOST` is the port number Loki will run on
     - `LOKI_PORT_CONTAINER` is the port number Loki will run on in the container
-    - `SECRET_KEY` is the secret key for the Flask app THIS IS VERY IMPORTANT TO CHANGE 
+    - `SECRET_KEY` is the secret key for the Flask app THIS IS VERY IMPORTANT TO CHANGE
+    - `MONGO_INITDB_ROOT_USERNAME` is the root username for the MongoDB database
+    - `MONGO_INITDB_ROOT_PASSWORD` is the root password for the MongoDB database
 4. Run `docker-compose up --build -d` to build the images and run the containers
 5. Access the app at `http://localhost:8000`
