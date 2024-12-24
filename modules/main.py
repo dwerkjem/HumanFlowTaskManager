@@ -188,14 +188,3 @@ def logout_user(n_clicks):
         # Return both the new pathname and `True` to force a page reload.
         return '/login', True
     return dash.no_update, dash.no_update
-
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == 'clear_rate_limit':
-        if len(sys.argv) != 3:
-            print("Usage: python main.py clear_rate_limit <user_ip>")
-        else:
-            user_ip = sys.argv[2]
-            clear_rate_limit(user_ip)
-    else:
-        app.run_server(debug=False)

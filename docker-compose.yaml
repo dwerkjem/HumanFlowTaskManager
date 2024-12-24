@@ -37,6 +37,19 @@ services:
     networks:
       - app-network
 
+  mongo:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"
+    env_file: .env
+    environment:
+      - MONGO_INITDB_DATABASE=Human Flow Task Manger DB
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+    networks:
+      - app-network
+
   app:
     build: .
     ports:
@@ -45,10 +58,13 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - MONGO_HOST=mongo
+      - MONGO_PORT=27017
     restart: unless-stopped
     depends_on:
       - redis
       - loki
+      - mongo
     networks:
       - app-network
 
@@ -56,6 +72,7 @@ volumes:
   grafana-data:
   loki-wal:
   redis-data:
+  mongo-data:
 
 networks:
   app-network:
