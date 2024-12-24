@@ -123,7 +123,7 @@ def logout():
         username = session.pop('username', None)
         session.pop('group', None)
         logger.info(f"User '{username}' logged out successfully.")
-        return redirect(url_for('login'))
+        return redirect(url_for('/login'))
     except Exception as e:
         logger.error(f"Error during logout: {e}")
         return "Error during logout", 500
@@ -131,7 +131,7 @@ def logout():
 
 @server.route('/')
 def index():
-    return redirect(url_for('login'))
+    return redirect(url_for('/login'))
 
 
 def clear_rate_limit(user_ip):
@@ -179,9 +179,7 @@ def display_page(pathname):
                 html.P("Welcome User!"),
             ])
     else:
-        return html.Div([
-            html.P("Invalid group. Please contact the administrator.")
-        ])
+        redirect(url_for('index'))
 
 
 if __name__ == "__main__":
@@ -199,14 +197,7 @@ def create_nav_bar(username="Guest"):
         children=[
             dbc.NavItem(dbc.NavLink("Home", href="/")),
             dbc.NavItem(dbc.NavLink("Goals", href="/goals")),
-            dbc.DropdownMenu(
-                nav=True,
-                in_navbar=True,
-                label=f"Hello, {username}",
-                children=[
-                    dbc.DropdownMenuItem("Logout", href="/logout")
-                ],
-            ),
+            dbc.NavItem(dbc.NavLink("Logout", href="/logout")),
         ],
         brand="Human Flow Task Manager",
         brand_href="/",
