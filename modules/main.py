@@ -4,7 +4,6 @@ import redis
 import random
 import sys
 
-import dash
 from dash import Dash, html, dcc, Output, Input
 from flask import Flask, session, redirect, url_for, request, g
 from flask_limiter.util import get_remote_address
@@ -12,8 +11,7 @@ import dash_bootstrap_components as dbc
 
 from modules.custom_logger import create_logger
 
-
-stylesheets = [dbc.themes.COSMO]
+stylesheets = [dbc.themes.FLATLY]
 
 logger = create_logger()
 
@@ -44,6 +42,32 @@ app = Dash(
     external_stylesheets=stylesheets
 )
 
+app.layout = html.Div(
+    [
+        dbc.NavbarSimple(
+            children=[
+                dbc.NavItem(dbc.NavLink("Home", href="/", active="exact")),
+                dbc.NavItem(dbc.NavLink("Goals", href="/goals", active="exact")),
+                dbc.NavItem(dbc.NavLink("Tasks", href="/tasks", active="exact")),
+                dbc.NavItem(dbc.NavLink("Logout", href="/logout")),
+                dbc.Label(className="fa fa-moon", html_for="switch"),
+                dbc.Switch(id="switch", value=True, className="d-inline-block ms-1", persistence=True),
+                dbc.Label(className="fa fa-sun", html_for="switch"),
+            ],
+            brand="Human Flow Task Manager",
+            brand_href="/",
+            color="primary",
+            dark=True,
+            expand="lg",
+        ),
+        # Hidden Div for clientside callback
+        html.Div(id='theme-output', style={'display': 'none'}),
+        dcc.Location(id='url', refresh=False),
+        # Page content will be rendered by the callback
+        html.Div(id='page-content')
+    ]
+)
+
 # Redis config
 redis_host = os.getenv('REDIS_HOST', 'redis')
 redis_port = int(os.getenv('REDIS_PORT', 6379))
@@ -55,7 +79,6 @@ try:
     logger.info("Successfully connected to Redis.")
 except redis.ConnectionError as e:
     logger.error(f"Failed to connect to Redis: {e}")
-
 
 @server.before_request
 def before_request():
@@ -70,6 +93,10 @@ def before_request():
         g.username = None
         g.group = None
 
+@server.before_request
+def protect_all_routes():
+    if request.endpoint not in ('login', 'static', 'logout') and 'username' not in session:
+        return redirect(url_for('login'))
 
 @server.route('/login', methods=['GET', 'POST'])
 def login():
@@ -109,7 +136,6 @@ def login():
         </form>
     '''
 
-
 @server.route('/logout')
 def logout():
     """
@@ -124,7 +150,6 @@ def logout():
         logger.error(f"Error during logout: {e}")
         return "Error during logout", 500
 
-
 @server.route('/')
 def index():
     """
@@ -135,7 +160,6 @@ def index():
     else:
         return redirect('/pages/index')  # Adjusted to point to the Dash page
 
-
 def clear_rate_limit(user_ip):
     # Same helper function you already had
     keys = redis_client.keys(f"LIMITER/{user_ip}/*")
@@ -143,6 +167,17 @@ def clear_rate_limit(user_ip):
         redis_client.delete(key)
     logger.info(f"Rate limits for {user_ip} cleared.")
 
+# Protect Dash Routes with Client-Side Callback
+app.clientside_callback(
+    """
+    function(switchOn) {
+        document.documentElement.setAttribute("data-bs-theme", switchOn ? "light" : "dark"); 
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output("theme-output", "children"),  # Correct Output
+    Input("switch", "value"),
+)
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == 'clear_rate_limit':

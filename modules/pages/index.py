@@ -8,5 +8,5 @@ dash.register_page(__name__, path='/')
 logger = create_logger()
 
 layout = html.Div([
-    html.H1("Welcome to Human Flow Task Manager"),
+    html.H1("Welcome to Human Flow Task Manager")
 ])
