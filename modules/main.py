@@ -4,16 +4,15 @@ import redis
 import random
 import sys
 
+import dash
 from dash import Dash, html, dcc, Output, Input
 from flask import Flask, session, redirect, url_for, request, g
 from flask_limiter.util import get_remote_address
+import dash_bootstrap_components as dbc
 
+from modules.custom_logger import create_logger
 
-from modules.pages.nav_bar import create_nav_bar
-if __name__ != "__main__":
-    from modules.custom_logger import create_logger
-else:
-    from custom_logger import create_logger
+stylesheets = [dbc.themes.COSMO]
 
 logger = create_logger()
 
@@ -38,7 +37,10 @@ app = Dash(
     server=server,
     suppress_callback_exceptions=True,
     use_pages=True,
-    pages_folder='pages'
+    pages_folder='pages',
+    title='Dash App',
+    update_title='Loading...',
+    external_stylesheets=stylesheets
 )
 
 # Redis config
@@ -68,6 +70,12 @@ def before_request():
     if 'username' in session:
         session['group'] = USER_GROUPS.get(session['username'])
         logger.debug(f"User '{session['username']}' logged in with group '{session['group']}'.")
+        # Set g.username and g.group for this request
+        g.username = session['username']
+        g.group = session['group']
+    else:
+        g.username = None
+        g.group = None
 
 
 @server.route('/login', methods=['GET', 'POST'])
@@ -114,11 +122,11 @@ def logout():
     try:
         username = session.pop('username', None)
         session.pop('group', None)
-        logger.info(f"User '{username}' logged out.")
+        logger.info(f"User '{username}' logged out successfully.")
+        return redirect(url_for('login'))
     except Exception as e:
         logger.error(f"Error during logout: {e}")
-        return "Internal Server Error", 500
-    return redirect(url_for('login'))
+        return "Error during logout", 500
 
 
 @server.route('/')
@@ -135,11 +143,18 @@ def clear_rate_limit(user_ip):
 
 
 app.layout = html.Div([
-    create_nav_bar(),
+    html.Div(id='nav-bar'),
     dcc.Location(id='url', refresh=False),
     html.Div(id='page-content')
 ])
 
+@app.callback(
+    Output('nav-bar', 'children'),
+    Input('url', 'pathname')
+)
+def update_nav(pathname):
+    username = session.get('username', 'Guest')
+    return create_nav_bar(username)
 
 @app.callback(
     Output('page-content', 'children'),
@@ -158,16 +173,14 @@ def display_page(pathname):
         if group == '0':
             return html.Div([
                 html.P("Welcome Admin!"),
-                html.A("Logout", href="/logout")
             ])
         elif group == '1':
             return html.Div([
                 html.P("Welcome User!"),
-                html.A("Logout", href="/logout")
             ])
     else:
         return html.Div([
-            html.P("Invalid group. Please contact the administrator."),
+            html.P("Invalid group. Please contact the administrator.")
         ])
 
 
@@ -180,3 +193,32 @@ if __name__ == "__main__":
             clear_rate_limit(user_ip)
     else:
         app.run_server(debug=False)
+
+def create_nav_bar(username="Guest"):
+    return dbc.NavbarSimple(
+        children=[
+            dbc.NavItem(dbc.NavLink("Home", href="/")),
+            dbc.NavItem(dbc.NavLink("Goals", href="/goals")),
+            dbc.DropdownMenu(
+                nav=True,
+                in_navbar=True,
+                label=f"Hello, {username}",
+                children=[
+                    dbc.DropdownMenuItem("Logout", href="/logout")
+                ],
+            ),
+        ],
+        brand="Human Flow Task Manager",
+        brand_href="/",
+        color="primary",
+        dark=True,
+    )
+
+
+
+dash.register_page(__name__, path='/')
+
+layout = html.Div([
+    html.H1("Welcome to Human Flow Task Manager"),
+    html.P("Please login to continue.")
+])
