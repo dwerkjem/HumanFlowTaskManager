@@ -1,5 +1,6 @@
 import os
 import json
+import dash
 import redis
 import random
 import sys
@@ -49,7 +50,7 @@ app.layout = html.Div(
                 dbc.NavItem(dbc.NavLink("Home", href="/", active="exact")),
                 dbc.NavItem(dbc.NavLink("Goals", href="/goals", active="exact")),
                 dbc.NavItem(dbc.NavLink("Tasks", href="/tasks", active="exact")),
-                dbc.NavItem(dbc.NavLink("Logout", href="/logout")),
+                dbc.NavItem(dbc.NavLink("Logout", id="logout-link")),
                 dbc.Label(className="fa fa-moon", html_for="switch"),
                 dbc.Switch(id="switch", value=True, className="d-inline-block ms-1", persistence=True),
                 dbc.Label(className="fa fa-sun", html_for="switch"),
@@ -64,7 +65,7 @@ app.layout = html.Div(
         html.Div(id='theme-output', style={'display': 'none'}),
         dcc.Location(id='url', refresh=False),
         # Page content will be rendered by the callback
-        html.Div(id='page-content')
+        dash.page_container,
     ]
 )
 
@@ -83,18 +84,14 @@ except redis.ConnectionError as e:
 @server.before_request
 def before_request():
     session.permanent = True
+
     if 'username' in session:
         session['group'] = USER_GROUPS.get(session['username'])
-        logger.debug(f"User '{session['username']}' logged in with group '{session['group']}'.")
-        # Set g.username and g.group for this request
         g.username = session['username']
         g.group = session['group']
     else:
         g.username = None
         g.group = None
-
-@server.before_request
-def protect_all_routes():
     if request.endpoint not in ('login', 'static', 'logout') and 'username' not in session:
         return redirect(url_for('login'))
 
@@ -178,6 +175,20 @@ app.clientside_callback(
     Output("theme-output", "children"),  # Correct Output
     Input("switch", "value"),
 )
+
+@app.callback(
+    [Output('url', 'pathname'), Output('url', 'refresh')],
+    [Input('logout-link', 'n_clicks')]
+)
+def logout_user(n_clicks):
+    if n_clicks:
+        session.pop('username', None)
+        session.pop('group', None)
+        logger.info(f"User logged out successfully.")
+        # Return both the new pathname and `True` to force a page reload.
+        return '/login', True
+    return dash.no_update, dash.no_update
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == 'clear_rate_limit':
