@@ -1,5 +1,6 @@
 import dash
 from dash import html
+import pymongo
 
 from modules.custom_logger import create_logger
 

@@ -4,7 +4,7 @@ services:
   loki:
     image: grafana/loki:2.7.1
     ports:
-      - "${LOKI_PORT_HOST}:${LOKI_PORT_CONTAINER}" 
+      - "${LOKI_PORT_HOST}:${LOKI_PORT_CONTAINER}"
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - ./config/loki-config.yaml:/etc/loki/local-config.yaml
@@ -17,7 +17,7 @@ services:
   grafana:
     image: grafana/grafana:9.5.0
     ports:
-      - "${GRAFANA_PORT_HOST}:${GRAFANA_PORT_CONTAINER}" 
+      - "${GRAFANA_PORT_HOST}:${GRAFANA_PORT_CONTAINER}"
     env_file: .env
     volumes:
       - grafana-data:/var/lib/grafana
@@ -43,7 +43,9 @@ services:
       - "27017:27017"
     env_file: .env
     environment:
-      - MONGO_INITDB_DATABASE=Human Flow Task Manger DB
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=HumanFlowTaskManagerDB
     volumes:
       - mongo-data:/data/db
     restart: unless-stopped
@@ -60,6 +62,8 @@ services:
       - REDIS_PORT=6379
       - MONGO_HOST=mongo
       - MONGO_PORT=27017
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
     restart: unless-stopped
     depends_on:
       - redis

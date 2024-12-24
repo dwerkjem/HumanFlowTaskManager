@@ -49,6 +49,7 @@ app.layout = html.Div(
             children=[
                 dbc.NavItem(dbc.NavLink("Home", href="/", active="exact")),
                 dbc.NavItem(dbc.NavLink("Goals", href="/goals", active="exact")),
+                dbc.NavItem(dbc.NavLink("Journal", href="/journal", active="exact")),
                 dbc.NavItem(dbc.NavLink("Tasks", href="/tasks", active="exact")),
                 dbc.NavItem(dbc.NavLink("Logout", id="logout-link")),
                 dbc.Label(className="fa fa-moon", html_for="switch"),
