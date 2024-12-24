@@ -12,6 +12,7 @@ import dash_bootstrap_components as dbc
 
 from modules.custom_logger import create_logger
 
+
 stylesheets = [dbc.themes.COSMO]
 
 logger = create_logger()
@@ -55,14 +56,6 @@ try:
 except redis.ConnectionError as e:
     logger.error(f"Failed to connect to Redis: {e}")
 
-# Custom key function
-def custom_key_func():
-    """If IP is internal, exempt from rate limiting. Otherwise, use the remote IP."""
-    remote_addr = get_remote_address()
-    if (remote_addr.startswith('192.168.')):
-        return None  # No rate limit for internal IP range
-    return remote_addr
-
 
 @server.before_request
 def before_request():
@@ -83,7 +76,7 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        ip = custom_key_func()
+        ip = get_remote_address()
 
         # Check if user is locked out
         attempts_key = f"login_attempts:{ip}"
@@ -119,11 +112,14 @@ def login():
 
 @server.route('/logout')
 def logout():
+    """
+    Log the user out and redirect them to the /login page.
+    """
     try:
         username = session.pop('username', None)
         session.pop('group', None)
         logger.info(f"User '{username}' logged out successfully.")
-        return redirect(url_for('/login'))
+        return redirect(url_for('login'))
     except Exception as e:
         logger.error(f"Error during logout: {e}")
         return "Error during logout", 500
@@ -131,7 +127,13 @@ def logout():
 
 @server.route('/')
 def index():
-    return redirect(url_for('/login'))
+    """
+    If user is logged in, load the main dash content; otherwise, redirect to login page.
+    """
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    else:
+        return redirect('/pages/index')  # Adjusted to point to the Dash page
 
 
 def clear_rate_limit(user_ip):
@@ -140,46 +142,6 @@ def clear_rate_limit(user_ip):
     for key in keys:
         redis_client.delete(key)
     logger.info(f"Rate limits for {user_ip} cleared.")
-
-
-app.layout = html.Div([
-    html.Div(id='nav-bar'),
-    dcc.Location(id='url', refresh=False),
-    html.Div(id='page-content')
-])
-
-@app.callback(
-    Output('nav-bar', 'children'),
-    Input('url', 'pathname')
-)
-def update_nav(pathname):
-    username = session.get('username', 'Guest')
-    return create_nav_bar(username)
-
-@app.callback(
-    Output('page-content', 'children'),
-    Input('url', 'pathname')
-)
-def display_page(pathname):
-    if 'username' not in session:
-        logger.warning("Unauthorized access.")
-        return html.Div([
-            html.P("You are not logged in. Please login at "),
-            html.A("Login", href="/login")
-        ])
-    
-    group = session.get('group')
-    if pathname == '/':
-        if group == '0':
-            return html.Div([
-                html.P("Welcome Admin!"),
-            ])
-        elif group == '1':
-            return html.Div([
-                html.P("Welcome User!"),
-            ])
-    else:
-        redirect(url_for('index'))
 
 
 if __name__ == "__main__":
@@ -191,25 +153,3 @@ if __name__ == "__main__":
             clear_rate_limit(user_ip)
     else:
         app.run_server(debug=False)
-
-def create_nav_bar(username="Guest"):
-    return dbc.NavbarSimple(
-        children=[
-            dbc.NavItem(dbc.NavLink("Home", href="/")),
-            dbc.NavItem(dbc.NavLink("Goals", href="/goals")),
-            dbc.NavItem(dbc.NavLink("Logout", href="/logout")),
-        ],
-        brand="Human Flow Task Manager",
-        brand_href="/",
-        color="primary",
-        dark=True,
-    )
-
-
-
-dash.register_page(__name__, path='/')
-
-layout = html.Div([
-    html.H1("Welcome to Human Flow Task Manager"),
-    html.P("Please login to continue.")
-])
