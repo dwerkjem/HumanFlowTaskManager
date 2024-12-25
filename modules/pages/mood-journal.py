@@ -1,11 +1,12 @@
 import dash
 from dash import html, dcc, callback, no_update
 import dash_bootstrap_components as dbc
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output, State, ALL
 from datetime import datetime
 from modules.custom_logger import create_logger
 from modules.customORM import CustomORM
 from bson import ObjectId
+import json
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
@@ -99,7 +100,6 @@ layout = html.Div([
 
     html.Div(id="mood_journal", children=[])
 ])
-
 @callback(
     Output('db-alert', 'is_open'),
     Output('db-alert', 'children'),
@@ -153,7 +153,8 @@ def handle_modal(add_clicks, close_clicks, submit_clicks, date_val, mood_val, no
     [
         Input('mongo-data-table-interval', 'n_intervals'),
         Input('submit-entry-button', 'n_clicks'),
-        Input('refresh-button', 'n_clicks')
+        Input('refresh-button', 'n_clicks'),
+        Input({'type': 'delete-button', 'index': ALL}, 'n_clicks')
     ],
     [
         State('date-input', 'value'),
@@ -162,7 +163,7 @@ def handle_modal(add_clicks, close_clicks, submit_clicks, date_val, mood_val, no
     ],
     prevent_initial_call=True
 )
-def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks, date_val, mood_val, notes_val):
+def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks, delete_clicks, date_val, mood_val, notes_val):
     # Guard: if DB is offline, just return an empty list
     if not CustomORM().check_connection_health():
         return []
@@ -178,6 +179,19 @@ def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks, date_val, 
             "notes": notes_val or ""
         })
 
+    # If delete clicked, remove the entry
+    triggered_prop_id = ctx.triggered[0]['prop_id']
+    try:
+        triggered = json.loads(triggered_prop_id)
+        if triggered.get('type') == 'delete-button':
+            delete_id = triggered.get('index')
+            if ObjectId.is_valid(delete_id):
+                CustomORM().db["mood_journal"].delete_one({"_id": ObjectId(delete_id)})
+            else:
+                logger.error(f"Invalid ObjectId: {delete_id}")
+    except json.JSONDecodeError:
+        pass
+
     # For refresh-button or mongo-data-table-interval, just re-query
     mood_journal = CustomORM().query_collection("mood_journal")
     if mood_journal:
@@ -192,16 +206,28 @@ def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks, date_val, 
             dbc.Table(
                 children=[
                     html.Thead(
-                        html.Tr([html.Th(col) for col in columns])
+                        html.Tr([html.Th(col) for col in columns] + [html.Th("Actions")])
                     ),
                     html.Tbody([
-                        html.Tr([html.Td(row.get(col, 'N/A')) for col in columns])
-                        for row in mood_journal
+                        html.Tr(
+                            [html.Td(row.get(col, 'N/A')) for col in columns]
+                            + [
+                                html.Td(
+                                    dbc.Button(
+                                        "Delete",
+                                        id={"type": "delete-button", "index": row["_id"]},
+                                        color="danger",
+                                        size="sm"
+                                    )
+                                )
+                            ]
+                        ) for row in mood_journal
                     ])
                 ],
-                striped=True,
                 bordered=True,
-                hover=True
+                hover=True,
+                responsive=True,
+                striped=True
             )
         ]
     return []
