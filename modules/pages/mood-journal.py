@@ -1,9 +1,9 @@
 import dash
 from dash import html
 import dash_bootstrap_components as dbc
+from datetime import datetime
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-
 
 from modules.custom_logger import create_logger
 from modules.customORM import CustomORM
@@ -12,15 +12,14 @@ from dash.dependencies import Output, Input
 
 dash.register_page(__name__)
 
-
 logger = create_logger()
 
 if CustomORM().check_connection_health():
-    CustomORM().make_collection_if_not_exists("journal")
+    CustomORM().make_collection_if_not_exists("mood_journal")
 
-    journal = CustomORM().query_collection("journal")
+    mood_journal = CustomORM().query_collection("mood_journal")
 else:
-    journal = None
+    mood_journal = None
 
 layout = html.Div([
     dcc.Interval(id='interval-component', interval=10000, n_intervals=0),
@@ -32,9 +31,15 @@ layout = html.Div([
         dismissable=True,
         duration=3000
     ),
-    html.Div(id="journal", children=[])
-])
 
+    dcc.Interval(id='mongo-datatable-interval', interval=60*1000, n_intervals=0), # Update every 1 minute
+
+    html.H1("mood_journal"),
+    dbc.Button("Save To Database", id="save-button", color="success", className="mb-3"),
+    dbc.Button("Add Entry", id="add-entry-button", color="primary", className="mb-3"),    
+
+    html.Div(id="mood_journal", children=[])
+])
 
 @app.callback(
     Output('db-alert', 'is_open'),
