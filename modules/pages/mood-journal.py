@@ -15,6 +15,7 @@ logger = create_logger()
 
 if CustomORM().check_connection_health():
     CustomORM().make_collection_if_not_exists("mood_journal")
+
     mood_journal = CustomORM().query_collection("mood_journal")
 else:
     mood_journal = None
@@ -26,12 +27,11 @@ layout = html.Div([
         children="Failed to connect to the database." if not CustomORM().check_connection_health() else "Connected to the database.",
         color="danger" if not CustomORM().check_connection_health() else "success",
         is_open=True,
-        dismissable=True,
+        dismissable=True,  # Replace 'dismissible=True' with 'dismissable=True'
         duration=3000
     ),
 
-    # Update every 15 seconds
-    dcc.Interval(id='mongo-data-table-interval', interval=15*1000, n_intervals=0), 
+    dcc.Interval(id='mongo-data-table-interval', interval=60*1000, n_intervals=0), # Update every 1 minute
 
     html.H1("Mood Journal"),
     
@@ -51,36 +51,13 @@ layout = html.Div([
                     dbc.Form(
                         [
                             dbc.Label("Date"),
-                            dbc.Input(
-                                id="date-input",
-                                type="date",
-                                value=datetime.now().strftime("%Y-%m-%d"),
-                                readonly=True
-                            )
+                            dbc.Input(id="date-input", type="date", value=datetime.now().strftime("%Y-%m-%d"))
                         ]
                     ),
                     dbc.Form(
                         [
-                            dbc.Label("Mood Slider (Devastated = 1, Ecstatic = 10)"),
-                            dcc.Slider(
-                                id='mood-slider',
-                                min=1,
-                                max=10,
-                                step=1,
-                                marks={
-                                    1: "Devastated",
-                                    2: "Very Sad",
-                                    3: "Sad",
-                                    4: "Down",
-                                    5: "Neutral",
-                                    6: "Okay",
-                                    7: "Content",
-                                    8: "Happy",
-                                    9: "Excited",
-                                    10: "Ecstatic"
-                                },
-                                value=5
-                            )
+                            dbc.Label("Mood (Bad = 1, Good = 10)"),
+                            dbc.Input(id="mood-input", type="number", min=1, max=10, step=1)
                         ]
                     ),
                     dbc.Form(
@@ -124,18 +101,17 @@ def hide_alert(n_intervals):
 @callback(
     Output('add-entry-modal', 'is_open'),
     Output('date-input', 'value'),
-    Output('mood-slider', 'value'),
+    Output('mood-input', 'value'),
     Output('notes-input', 'value'),
     Input('add-entry-button', 'n_clicks'),
     Input('close-entry-button', 'n_clicks'),
     Input('submit-entry-button', 'n_clicks'),
     State('date-input', 'value'),
-    State('mood-slider', 'value'),
+    State('mood-input', 'value'),
     State('notes-input', 'value'),
     prevent_initial_call=True
 )
-def handle_modal(add_clicks, close_clicks, submit_clicks,
-                 date_val, mood_val, notes_val):
+def handle_modal(add_clicks, close_clicks, submit_clicks, date_val, mood_val, notes_val):
     ctx = dash.callback_context
     if not ctx.triggered:
         raise dash.exceptions.PreventUpdate
@@ -143,13 +119,13 @@ def handle_modal(add_clicks, close_clicks, submit_clicks,
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
     if button_id == 'add-entry-button':
-        # Open the modal & reset fields to default
+        # Open modal, reset fields
         return True, datetime.now().strftime("%Y-%m-%d"), 5, ""
     elif button_id == 'close-entry-button':
-        # Close modal, keep the current form values
+        # Close modal
         return False, date_val, mood_val, notes_val
     elif button_id == 'submit-entry-button':
-        # Close modal after submission & reset form
+        # Close modal after submission; reset fields or keep them
         return False, datetime.now().strftime("%Y-%m-%d"), 5, ""
     raise dash.exceptions.PreventUpdate
 
@@ -163,42 +139,35 @@ def handle_modal(add_clicks, close_clicks, submit_clicks,
     ],
     [
         State('date-input', 'value'),
-        State('mood-slider', 'value'),
+        State('mood-input', 'value'),
         State('notes-input', 'value')
     ],
     prevent_initial_call=True
 )
-def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks,
-                         date_val, mood_val, notes_val):
-    """
-    This callback triggers when:
-      - The interval fires (polling)
-      - The user clicks "Submit" (submit_entry_button)
-      - The user clicks "Refresh"
-    Then it re-queries the database and returns the latest data.
-    """
-    # If DB is offline, just return an empty list
+def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks, date_val, mood_val, notes_val):
+    # Guard: if DB is offline, just return an empty list
     if not CustomORM().check_connection_health():
         return []
 
     ctx = dash.callback_context
     triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
+    # If submit clicked, insert new entry if valid
     if triggered_id == 'submit-entry-button' and date_val and mood_val:
         CustomORM().db["mood_journal"].insert_one({
-            "Date": date_val,
-            "Mood": mood_val,
-            "Notes": notes_val or ""
+            "date": date_val,
+            "mood": mood_val,
+            "notes": notes_val or ""
         })
 
-    # Always re-query and build the table
+    # For refresh-button or mongo-data-table-interval, just re-query
     mood_journal = CustomORM().query_collection("mood_journal")
     if mood_journal:
-        # Convert ObjectId to string so Dash can render it
         for doc in mood_journal:
             if "_id" in doc and isinstance(doc["_id"], ObjectId):
                 doc["_id"] = str(doc["_id"])
 
+<<<<<<< HEAD
         # Exclude the _id column
         columns = [col for col in mood_journal[0].keys() if col != "_id"]
 
@@ -219,3 +188,18 @@ def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks,
             )
         ]
     return []
+=======
+        return [dbc.Table(
+            children=[
+                html.Thead(html.Tr([html.Th(col) for col in mood_journal[0].keys()])),
+                html.Tbody([
+                    html.Tr([html.Td(item[col]) for col in item.keys()])
+                    for item in mood_journal
+                ])
+            ],
+            striped=True,
+            bordered=True,
+            hover=True
+        )]
+    return []
+>>>>>>> parent of aba0a66 (Refactor mood journal page: update mood input to slider, adjust refresh interval, and enhance modal handling)
