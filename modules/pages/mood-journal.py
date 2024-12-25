@@ -27,7 +27,7 @@ layout = html.Div([
         children="Failed to connect to the database." if not CustomORM().check_connection_health() else "Connected to the database.",
         color="danger" if not CustomORM().check_connection_health() else "success",
         is_open=True,
-        dismissable=True,  # Replace 'dismissible=True' with 'dismissable=True'
+        dismissable=True,
         duration=3000
     ),
 
@@ -54,10 +54,28 @@ layout = html.Div([
                             dbc.Input(id="date-input", type="date", value=datetime.now().strftime("%Y-%m-%d"))
                         ]
                     ),
-                    dbc.Form(
+                     dbc.Form(
                         [
-                            dbc.Label("Mood (Bad = 1, Good = 10)"),
-                            dbc.Input(id="mood-input", type="number", min=1, max=10, step=1)
+                            dbc.Label("Mood Slider (Devastated = 1, Ecstatic = 10)"),
+                            dcc.Slider(
+                                id='mood-slider',
+                                min=1,
+                                max=10,
+                                step=1,
+                                marks={
+                                    1: "Devastated",
+                                    2: "Very Sad",
+                                    3: "Sad",
+                                    4: "Down",
+                                    5: "Neutral",
+                                    6: "Okay",
+                                    7: "Content",
+                                    8: "Happy",
+                                    9: "Excited",
+                                    10: "Ecstatic"
+                                },
+                                value=5
+                            )
                         ]
                     ),
                     dbc.Form(
@@ -101,13 +119,13 @@ def hide_alert(n_intervals):
 @callback(
     Output('add-entry-modal', 'is_open'),
     Output('date-input', 'value'),
-    Output('mood-input', 'value'),
+    Output('mood-slider', 'value'),
     Output('notes-input', 'value'),
     Input('add-entry-button', 'n_clicks'),
     Input('close-entry-button', 'n_clicks'),
     Input('submit-entry-button', 'n_clicks'),
     State('date-input', 'value'),
-    State('mood-input', 'value'),
+    State('mood-slider', 'value'),
     State('notes-input', 'value'),
     prevent_initial_call=True
 )
@@ -139,7 +157,7 @@ def handle_modal(add_clicks, close_clicks, submit_clicks, date_val, mood_val, no
     ],
     [
         State('date-input', 'value'),
-        State('mood-input', 'value'),
+        State('mood-slider', 'value'),
         State('notes-input', 'value')
     ],
     prevent_initial_call=True
@@ -167,7 +185,6 @@ def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks, date_val, 
             if "_id" in doc and isinstance(doc["_id"], ObjectId):
                 doc["_id"] = str(doc["_id"])
 
-<<<<<<< HEAD
         # Exclude the _id column
         columns = [col for col in mood_journal[0].keys() if col != "_id"]
 
@@ -178,7 +195,7 @@ def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks, date_val, 
                         html.Tr([html.Th(col) for col in columns])
                     ),
                     html.Tbody([
-                        html.Tr([html.Td(row[col]) for col in columns])
+                        html.Tr([html.Td(row.get(col, 'N/A')) for col in columns])
                         for row in mood_journal
                     ])
                 ],
@@ -188,18 +205,3 @@ def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks, date_val, 
             )
         ]
     return []
-=======
-        return [dbc.Table(
-            children=[
-                html.Thead(html.Tr([html.Th(col) for col in mood_journal[0].keys()])),
-                html.Tbody([
-                    html.Tr([html.Td(item[col]) for col in item.keys()])
-                    for item in mood_journal
-                ])
-            ],
-            striped=True,
-            bordered=True,
-            hover=True
-        )]
-    return []
->>>>>>> parent of aba0a66 (Refactor mood journal page: update mood input to slider, adjust refresh interval, and enhance modal handling)
