@@ -3,12 +3,12 @@ import os
 import dotenv
 import pymongo
 
-from modules import custom_logger
+from modules.custom_logger import create_logger
 
 dotenv.load_dotenv()
 
 
-logger = custom_logger.getLogger('custom_logger')
+logger = create_logger()
 class CustomORM:
     """
     A custom Object-Relational Mapping (ORM) class for managing MongoDB connections and operations.
@@ -24,7 +24,7 @@ class CustomORM:
 
 
 
-    def get_db_connection():
+    def get_db_connection(self):
         """
         Establish a connection to the MongoDB database.
 
