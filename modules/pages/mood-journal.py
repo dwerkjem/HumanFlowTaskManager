@@ -1,5 +1,5 @@
 import dash
-from dash import html, dcc, callback, no_update
+from dash import html, dcc, callback
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State, ALL
 from datetime import datetime
@@ -7,8 +7,6 @@ from modules.custom_logger import create_logger
 from modules.customORM import CustomORM
 from bson import ObjectId
 import json
-
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 dash.register_page(__name__)
 
