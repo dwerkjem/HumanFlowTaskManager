@@ -34,7 +34,15 @@ layout = html.Div([
     dcc.Interval(id='mongo-data-table-interval', interval=60*1000, n_intervals=0), # Update every 1 minute
 
     html.H1("Mood Journal"),
-    dbc.Button("Add Entry", id="add-entry-button", color="primary", className="mb-1"),
+    
+    html.Div(
+        [
+            dbc.Button("Add Entry", id="add-entry-button", color="primary"),
+            dbc.Button("Refresh", id="refresh-button", color="primary")
+        ],
+        className="d-grid gap-2"
+    ),
+    
     dbc.Modal(
         [
             dbc.ModalHeader("Add Entry"),
@@ -126,7 +134,8 @@ def handle_modal(add_clicks, close_clicks, submit_clicks, date_val, mood_val, no
     Output('mood_journal', 'children'),
     [
         Input('mongo-data-table-interval', 'n_intervals'),
-        Input('submit-entry-button', 'n_clicks')
+        Input('submit-entry-button', 'n_clicks'),
+        Input('refresh-button', 'n_clicks')
     ],
     [
         State('date-input', 'value'),
@@ -135,34 +144,30 @@ def handle_modal(add_clicks, close_clicks, submit_clicks, date_val, mood_val, no
     ],
     prevent_initial_call=True
 )
-def refresh_mood_journal(_n_intervals, submit_clicks, date_val, mood_val, notes_val):
+def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks, date_val, mood_val, notes_val):
     # Guard: if DB is offline, just return an empty list
     if not CustomORM().check_connection_health():
         return []
 
     ctx = dash.callback_context
-    if ctx.triggered and ctx.triggered[0]['prop_id'].startswith('submit-entry-button'):
-        # Insert new entry if valid
-        if date_val and mood_val:
-            CustomORM().db["mood_journal"].insert_one({
-                "date": date_val,
-                "mood": mood_val,
-                "notes": notes_val or ""
-            })
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    # Query the collection
+    # If submit clicked, insert new entry if valid
+    if triggered_id == 'submit-entry-button' and date_val and mood_val:
+        CustomORM().db["mood_journal"].insert_one({
+            "date": date_val,
+            "mood": mood_val,
+            "notes": notes_val or ""
+        })
+
+    # For refresh-button or mongo-data-table-interval, just re-query
     mood_journal = CustomORM().query_collection("mood_journal")
-
-    # Convert any ObjectIds to strings to avoid JSON serialization errors
     if mood_journal:
         for doc in mood_journal:
             if "_id" in doc and isinstance(doc["_id"], ObjectId):
                 doc["_id"] = str(doc["_id"])
 
-        # Build a simple table (or use dbc.Table.from_dataframe if you want a DataFrame)
         return [dbc.Table(
-            # If mood_journal is a list of dicts, you can manually build rows,
-            # or convert to a DataFrame. Here's a quick manual approach:
             children=[
                 html.Thead(html.Tr([html.Th(col) for col in mood_journal[0].keys()])),
                 html.Tbody([
@@ -174,7 +179,4 @@ def refresh_mood_journal(_n_intervals, submit_clicks, date_val, mood_val, notes_
             bordered=True,
             hover=True
         )]
-
-    # If empty, return an empty list
     return []
-
