@@ -1,12 +1,11 @@
 import dash
 from dash import html, dcc, callback, no_update
 import dash_bootstrap_components as dbc
-from dash.dependencies import Input, Output, State, MATCH, ALL
+from dash.dependencies import Input, Output, State
 from datetime import datetime
 from modules.custom_logger import create_logger
 from modules.customORM import CustomORM
 from bson import ObjectId
-import json
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
@@ -14,7 +13,6 @@ dash.register_page(__name__)
 
 logger = create_logger()
 
-# Ensure collection exists
 if CustomORM().check_connection_health():
     CustomORM().make_collection_if_not_exists("mood_journal")
     mood_journal = CustomORM().query_collection("mood_journal")
@@ -25,17 +23,8 @@ layout = html.Div([
     dcc.Interval(id='interval-component', interval=10000, n_intervals=0),
     dbc.Alert(
         id="db-alert",
-        # Initially show either success/failure message
-        children=(
-            "Failed to connect to the database."
-            if not CustomORM().check_connection_health() else
-            "Connected to the database."
-        ),
-        color=(
-            "danger"
-            if not CustomORM().check_connection_health() else
-            "success"
-        ),
+        children="Failed to connect to the database." if not CustomORM().check_connection_health() else "Connected to the database.",
+        color="danger" if not CustomORM().check_connection_health() else "success",
         is_open=True,
         dismissable=True,
         duration=3000
@@ -120,45 +109,17 @@ layout = html.Div([
     Output('db-alert', 'is_open'),
     Output('db-alert', 'children'),
     Output('db-alert', 'color'),
-    [
-        Input('interval-component', 'n_intervals'),
-        Input({'type': 'delete-btn', 'row_id': ALL}, 'n_clicks')
-    ],
-    prevent_initial_call=True
+    Input('interval-component', 'n_intervals')
 )
-def handle_db_alert(n_intervals, delete_clicks):
-    """
-    A merged callback that:
-      - Checks DB connection every 10s (interval-component).
-      - Shows a "Deleted entry with ID" message when a delete button is clicked.
+def update_alert(_):
+    if CustomORM().check_connection_health():
+        return False, "Connected to the database.", "success"
+    else:
+        return True, "Failed to connect to the database.", "danger"
 
-    Because Dash does NOT allow multiple callbacks with the same outputs,
-    we handle both events here in one callback.
-    """
-
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        raise dash.exceptions.PreventUpdate
-
-    triggered = ctx.triggered[0]["prop_id"].split(".")[0]
-
-    # If the DB check interval triggered this callback:
-    if triggered == "interval-component":
-        if CustomORM().check_connection_health():
-            return (False, "Connected to the database.", "success")
-        else:
-            return (True, "Failed to connect to the database.", "danger")
-
-    # Otherwise, it must be a delete button
-    try:
-        button_id = json.loads(triggered)  # e.g. {"type":"delete-btn","row_id":"someID"}
-        row_id = button_id.get("row_id")
-        # We show a quick alert that the entry was deleted.
-        return (True, f"Deleted entry with ID: {row_id}", "warning")
-    except Exception as e:
-        # If somehow not JSON or missing row_id
-        logger.error(f"Error parsing delete button ID: {e}")
-        return no_update, no_update, no_update
+def hide_alert(n_intervals):
+    logger.info(f"hide_alert triggered with n_intervals={n_intervals}")
+    return False if CustomORM().check_connection_health() else True
 
 @callback(
     Output('add-entry-modal', 'is_open'),
@@ -175,9 +136,6 @@ def handle_db_alert(n_intervals, delete_clicks):
 )
 def handle_modal(add_clicks, close_clicks, submit_clicks,
                  date_val, mood_val, notes_val):
-    """
-    Single callback to handle the modal open, close, and field reset on submit.
-    """
     ctx = dash.callback_context
     if not ctx.triggered:
         raise dash.exceptions.PreventUpdate
@@ -201,8 +159,7 @@ def handle_modal(add_clicks, close_clicks, submit_clicks,
     [
         Input('mongo-data-table-interval', 'n_intervals'),
         Input('submit-entry-button', 'n_clicks'),
-        Input('refresh-button', 'n_clicks'),
-        Input({'type': 'delete-btn', 'row_id': ALL}, 'n_clicks')
+        Input('refresh-button', 'n_clicks')
     ],
     [
         State('date-input', 'value'),
@@ -211,117 +168,54 @@ def handle_modal(add_clicks, close_clicks, submit_clicks,
     ],
     prevent_initial_call=True
 )
-def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks, delete_clicks,
+def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks,
                          date_val, mood_val, notes_val):
     """
-    This callback handles:
-      - Polling (interval)
-      - Submitting a new entry
-      - Refreshing the table
-      - Deleting an entry
-
-    Then it rebuilds the table with the latest data.
+    This callback triggers when:
+      - The interval fires (polling)
+      - The user clicks "Submit" (submit_entry_button)
+      - The user clicks "Refresh"
+    Then it re-queries the database and returns the latest data.
     """
     # If DB is offline, just return an empty list
     if not CustomORM().check_connection_health():
-        logger.error("Database connection failed.")
         return []
 
     ctx = dash.callback_context
-    if not ctx.triggered:
-        raise dash.exceptions.PreventUpdate
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    triggered = ctx.triggered[0]['prop_id'].split('.')[0]
+    if triggered_id == 'submit-entry-button' and date_val and mood_val:
+        CustomORM().db["mood_journal"].insert_one({
+            "Date": date_val,
+            "Mood": mood_val,
+            "Notes": notes_val or ""
+        })
 
-    # 1) If "Submit" was clicked, insert a new doc
-    if triggered == 'submit-entry-button' and date_val and mood_val is not None:
-        try:
-            CustomORM().db["mood_journal"].insert_one({
-                "Date": date_val,
-                "Mood": mood_val,
-                "Notes": notes_val or ""
-            })
-            logger.info(f"Inserted new entry: Date={date_val}, Mood={mood_val}, Notes={notes_val}")
-        except Exception as e:
-            logger.error(f"Error inserting new entry: {e}")
-            return no_update
-
-    # 2) If "Refresh" was clicked, just log it (re-query below)
-    elif triggered == 'refresh-button':
-        logger.info("Refresh button clicked.")
-
-    # 3) If a delete button was clicked, remove that doc by _id
-    elif isinstance(triggered, str) and triggered.startswith("{"):
-        try:
-            button_id = json.loads(triggered)  # e.g. {"type": "delete-btn", "row_id": "someOID"}
-            if button_id.get('type') == 'delete-btn':
-                row_id = button_id.get('row_id')
-                CustomORM().db["mood_journal"].delete_one({"_id": ObjectId(row_id)})
-                logger.info(f"Deleted entry with _id: {row_id}")
-        except Exception as e:
-            logger.error(f"Error deleting entry: {e}")
-            return no_update
-
-    # Finally, re-query the updated data
-    try:
-        mood_journal = CustomORM().query_collection("mood_journal")
-        if not mood_journal:
-            logger.info("No entries found in mood_journal.")
-            return []
-
-        # Convert ObjectId to string & add "Actions" column
+    # Always re-query and build the table
+    mood_journal = CustomORM().query_collection("mood_journal")
+    if mood_journal:
+        # Convert ObjectId to string so Dash can render it
         for doc in mood_journal:
             if "_id" in doc and isinstance(doc["_id"], ObjectId):
                 doc["_id"] = str(doc["_id"])
-            # Add an Actions column with Edit & Delete buttons
-            doc["Actions"] = html.Div(
-                [
-                    dbc.Button(
-                        "Edit",
-                        id={"type": "edit-btn", "row_id": doc["_id"]},
-                        color="info",
-                        className="me-2",
-                        n_clicks=0
-                    ),
-                    dbc.Button(
-                        "Delete",
-                        id={"type": "delete-btn", "row_id": doc["_id"]},
-                        color="danger",
-                        n_clicks=0
-                    )
-                ]
-            )
 
-        # Define table columns
+        # Exclude the _id column
         columns = [col for col in mood_journal[0].keys() if col != "_id"]
-        if "Actions" not in columns:
-            columns.append("Actions")
 
-        # Build table header
-        table_header = html.Thead(html.Tr([html.Th(col) for col in columns]))
-
-        # Build table body
-        table_rows = []
-        for row in mood_journal:
-            row_cells = []
-            for col in columns:
-                cell_content = row[col]
-                # If the cell is already a Dash component, keep it as-is
-                row_cells.append(html.Td(cell_content))
-            table_rows.append(html.Tr(row_cells))
-
-        table_body = html.Tbody(table_rows)
-
-        # Return the final table
-        table = dbc.Table(
-            [table_header, table_body],
-            striped=True,
-            bordered=True,
-            hover=True,
-            responsive=True
-        )
-        return [table]
-
-    except Exception as e:
-        logger.error(f"Error building the mood journal table: {e}")
-        return []
+        return [
+            dbc.Table(
+                children=[
+                    html.Thead(
+                        html.Tr([html.Th(col) for col in columns])
+                    ),
+                    html.Tbody([
+                        html.Tr([html.Td(row[col]) for col in columns])
+                        for row in mood_journal
+                    ])
+                ],
+                striped=True,
+                bordered=True,
+                hover=True
+            )
+        ]
+    return []
