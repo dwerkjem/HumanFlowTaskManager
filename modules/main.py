@@ -156,10 +156,9 @@ def index():
     if 'username' not in session:
         return redirect(url_for('login'))
     else:
-        return redirect('/pages/index')  # Adjusted to point to the Dash page
+        return redirect('/pages/index')
 
 def clear_rate_limit(user_ip):
-    # Same helper function you already had
     keys = redis_client.keys(f"LIMITER/{user_ip}/*")
     for key in keys:
         redis_client.delete(key)
