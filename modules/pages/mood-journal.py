@@ -173,13 +173,18 @@ def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks, delete_cli
         raise dash.exceptions.PreventUpdate
 
     triggered_prop_id = ctx.triggered[0]['prop_id']
+    triggered = {}
 
-    try:
-        # Extract the component ID before the property (e.g., '{"type":"delete-button","index":"id"}')
-        id_part = triggered_prop_id.split('.')[0]
-        triggered = json.loads(id_part)
-    except (json.JSONDecodeError, IndexError):
-        triggered = {'type': '', 'index': ''}
+    if 'submit-entry-button' in triggered_prop_id:
+        triggered = {'type': 'submit-entry-button', 'index': ''}
+    elif triggered_prop_id.startswith("{"):
+        try:
+            # Correctly parse the JSON part before the dot
+            triggered = json.loads(triggered_prop_id.split('.')[0])
+        except json.JSONDecodeError:
+            triggered = {'type': '', 'index': ''}
+    else:
+        triggered = {'type': triggered_prop_id, 'index': ''}
 
     if triggered.get('type') == 'submit-entry-button' and date_val and mood_val:
         CustomORM().db["mood_journal"].insert_one({
@@ -187,6 +192,7 @@ def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks, delete_cli
             "mood": mood_val,
             "notes": notes_val or ""
         })
+        logger.info("Added new mood journal entry.")
 
     elif triggered.get('type') == 'delete-button':
         delete_id = triggered.get('index')
