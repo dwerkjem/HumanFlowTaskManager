@@ -169,28 +169,32 @@ def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks, delete_cli
         return []
 
     ctx = dash.callback_context
-    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    if not ctx.triggered:
+        raise dash.exceptions.PreventUpdate
 
-    # If submit clicked, insert new entry if valid
-    if triggered_id == 'submit-entry-button' and date_val and mood_val:
+    triggered_prop_id = ctx.triggered[0]['prop_id']
+
+    try:
+        # Extract the component ID before the property (e.g., '{"type":"delete-button","index":"id"}')
+        id_part = triggered_prop_id.split('.')[0]
+        triggered = json.loads(id_part)
+    except (json.JSONDecodeError, IndexError):
+        triggered = {'type': '', 'index': ''}
+
+    if triggered.get('type') == 'submit-entry-button' and date_val and mood_val:
         CustomORM().db["mood_journal"].insert_one({
             "date": date_val,
             "mood": mood_val,
             "notes": notes_val or ""
         })
 
-    # If delete clicked, remove the entry
-    triggered_prop_id = ctx.triggered[0]['prop_id']
-    try:
-        triggered = json.loads(triggered_prop_id)
-        if triggered.get('type') == 'delete-button':
-            delete_id = triggered.get('index')
-            if ObjectId.is_valid(delete_id):
-                CustomORM().db["mood_journal"].delete_one({"_id": ObjectId(delete_id)})
-            else:
-                logger.error(f"Invalid ObjectId: {delete_id}")
-    except json.JSONDecodeError:
-        pass
+    elif triggered.get('type') == 'delete-button':
+        delete_id = triggered.get('index')
+        if isinstance(delete_id, str) and ObjectId.is_valid(delete_id):
+            CustomORM().db["mood_journal"].delete_one({"_id": ObjectId(delete_id)})
+            logger.info(f"Deleted entry with ObjectId: {delete_id}")
+        else:
+            logger.error(f"Invalid ObjectId: {delete_id}")
 
     # For refresh-button or mongo-data-table-interval, just re-query
     mood_journal = CustomORM().query_collection("mood_journal")
