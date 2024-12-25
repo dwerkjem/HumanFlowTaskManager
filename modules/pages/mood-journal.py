@@ -172,18 +172,19 @@ def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks,
                          date_val, mood_val, notes_val):
     """
     This callback triggers when:
-      - The interval fires (polling)
-      - The user clicks "Submit" (submit_entry_button)
-      - The user clicks "Refresh"
-    Then it re-queries the database and returns the latest data.
+     - The interval fires (polling)
+     - The user clicks "Submit" (submit_entry_button)
+     - The user clicks "Refresh"
+    Then it re-queries the database and returns the latest data, adding an extra
+    "Actions" column with Edit & Delete buttons for each row.
     """
-    # If DB is offline, just return an empty list
     if not CustomORM().check_connection_health():
         return []
 
     ctx = dash.callback_context
     triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
+    # If "Submit" clicked, insert new entry
     if triggered_id == 'submit-entry-button' and date_val and mood_val:
         CustomORM().db["mood_journal"].insert_one({
             "Date": date_val,
@@ -191,31 +192,43 @@ def refresh_mood_journal(_n_intervals, submit_clicks, refresh_clicks,
             "Notes": notes_val or ""
         })
 
-    # Always re-query and build the table
+    # Query existing docs
     mood_journal = CustomORM().query_collection("mood_journal")
-    if mood_journal:
-        # Convert ObjectId to string so Dash can render it
-        for doc in mood_journal:
-            if "_id" in doc and isinstance(doc["_id"], ObjectId):
-                doc["_id"] = str(doc["_id"])
+    if not mood_journal:
+        return []
 
-        # Exclude the _id column
-        columns = [col for col in mood_journal[0].keys() if col != "_id"]
+    # Convert _id from ObjectId to str and add an "Actions" column
+    for doc in mood_journal:
+        if "_id" in doc and isinstance(doc["_id"], ObjectId):
+            doc["_id"] = str(doc["_id"])
+        # Add "Actions" column with Edit & Delete buttons
+        doc["Actions"] = html.Div(
+            [
+                dbc.Button("Edit", id={"type": "edit-btn", "row_id": doc["_id"]}, color="info", className="me-2"),
+                dbc.Button("Delete", id={"type": "delete-btn", "row_id": doc["_id"]}, color="danger")
+            ]
+        )
 
-        return [
-            dbc.Table(
-                children=[
-                    html.Thead(
-                        html.Tr([html.Th(col) for col in columns])
-                    ),
-                    html.Tbody([
-                        html.Tr([html.Td(row[col]) for col in columns])
-                        for row in mood_journal
-                    ])
-                ],
-                striped=True,
-                bordered=True,
-                hover=True
-            )
-        ]
-    return []
+    # Build table columns, excluding _id if desired
+    columns = [col for col in mood_journal[0].keys() if col != "_id"]  
+    # If you want to see the _id, remove the above filter for "_id"
+    # but keep "Actions":
+    if "Actions" not in columns:
+        columns.append("Actions")
+
+    # Build the table layout
+    return [
+        dbc.Table(
+            children=[
+                html.Thead(html.Tr([html.Th(col) for col in columns])),
+                html.Tbody([
+                    html.Tr([
+                        html.Td(row[col]) for col in columns
+                    ]) for row in mood_journal
+                ])
+            ],
+            striped=True,
+            bordered=True,
+            hover=True
+        )
+    ]
