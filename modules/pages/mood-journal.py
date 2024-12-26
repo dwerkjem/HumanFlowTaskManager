@@ -20,7 +20,7 @@ layout = html.Div([
 
     dcc.Interval(id='mongo-data-table-interval', interval=60*1000, n_intervals=0), # Update every 1 minute
 
-    html.H1("Mood Journal"),
+    html.H1("Mood Journal" , className="text-center"),
     
     html.Div(
         [
@@ -83,5 +83,5 @@ layout = html.Div([
         id="add-entry-modal",
         is_open=False
     ),
-    html.Div(id="mood_journal", children=[])
+    html.Div(id="mood_journal", children=[], style={'textAlign': 'center'})
 ])
